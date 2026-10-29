@@ -1,14 +1,27 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. Streamlit 페이지 기본 설정
+# 1. Streamlit 전체 화면 넓게 쓰기 (layout="wide") 및 상단/좌우 여백 제거
 st.set_page_config(
     page_title="NBA 실시간 스코어보드",
     page_icon="🏀",
-    layout="centered"
+    layout="wide"
 )
 
-# 2. HTML / CSS / JS 코드
+# Streamlit 자체 패딩 제거
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 0rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            max-width: 100% !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# 2. 풀스크린 대응 HTML / CSS / JS 코드
 html_code = """
 <!DOCTYPE html>
 <html lang="ko">
@@ -41,25 +54,28 @@ html_code = """
     body {
       background-color: var(--bg-color);
       color: var(--text-main);
-      padding: 20px 10px;
+      padding: 10px 0;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
+      width: 100%;
     }
 
+    /* 화면 폭 제약을 제거하여 100% 가득 채움 */
     .container {
       width: 100%;
-      max-width: 680px;
+      max-width: 100%;
+      padding: 0 15px;
     }
 
     header {
       text-align: center;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
 
     header h1 {
-      font-size: 1.8rem;
+      font-size: 2rem;
       font-weight: 900;
       color: var(--text-main);
       display: flex;
@@ -70,8 +86,8 @@ html_code = """
 
     header p {
       color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-top: 6px;
+      font-size: 0.95rem;
+      margin-top: 4px;
     }
 
     .controls {
@@ -79,12 +95,13 @@ html_code = """
       justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
+      padding: 0 10px;
     }
 
     .status-badge {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       font-weight: 600;
-      padding: 6px 12px;
+      padding: 8px 16px;
       border-radius: 20px;
       background: #EFECE6;
       color: var(--text-muted);
@@ -94,10 +111,10 @@ html_code = """
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       color: var(--text-main);
-      padding: 8px 16px;
+      padding: 8px 18px;
       border-radius: 20px;
       font-weight: 700;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       cursor: pointer;
       box-shadow: var(--shadow-sm);
       transition: all 0.2s ease;
@@ -113,10 +130,12 @@ html_code = """
       transform: translateY(-2px);
     }
 
+    /* 경기 카드가 널찍하게 퍼질 수 있도록 그리드 및 가로배치 적용 */
     .games-list {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
       gap: 20px;
+      width: 100%;
     }
 
     .game-card {
@@ -125,6 +144,11 @@ html_code = """
       border-radius: 20px;
       padding: 24px;
       box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease;
+    }
+
+    .game-card:hover {
+      transform: translateY(-2px);
     }
 
     .matchup {
@@ -141,8 +165,8 @@ html_code = """
     }
 
     .logo-wrapper {
-      width: 80px;
-      height: 80px;
+      width: 85px;
+      height: 85px;
       border-radius: 50%;
       background: #FFFFFF;
       border: 2px solid var(--card-border);
@@ -167,13 +191,13 @@ html_code = """
     }
 
     .team-name {
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       font-weight: 800;
       margin-top: 10px;
     }
 
     .score {
-      font-size: 2rem;
+      font-size: 2.2rem;
       font-weight: 900;
       color: var(--accent-orange);
       margin-top: 2px;
@@ -231,7 +255,7 @@ html_code = """
       background: #FFFFFF;
       border: 1px solid var(--card-border);
       border-radius: 14px;
-      padding: 14px;
+      padding: 12px 14px;
       margin-top: 10px;
       display: flex;
       align-items: center;
@@ -280,7 +304,7 @@ html_code = """
   <div class="container">
     <header>
       <h1>🏀 NBA 실시간 스코어</h1>
-      <p>ESPN 라이브 연동 · 부드러운 베이지 스코어보드</p>
+      <p>ESPN 라이브 연동 · 넓고 깨끗한 베이지 스코어보드</p>
     </header>
 
     <div class="controls">
@@ -334,7 +358,7 @@ html_code = """
     function renderGames(games) {
       const container = document.getElementById('gamesContainer');
       if (!games.length) {
-        container.innerHTML = `<div class="game-card" style="text-align:center;">오늘 예정된 NBA 경기가 없습니다.</div>`;
+        container.innerHTML = `<div class="game-card" style="text-align:center; grid-column: 1 / -1;">오늘 예정된 NBA 경기가 없습니다.</div>`;
         return;
       }
 
@@ -428,5 +452,5 @@ html_code = """
 </html>
 """
 
-# 3. Streamlit 컴포넌트로 화면 출력
+# 3. Streamlit 화면 전체 크기로 출력
 components.html(html_code, height=1200, scrolling=True)
