@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. Streamlit 전체 화면 넓게 쓰기 및 여백 제거
+# 1. Streamlit 넓은 레이아웃 및 여백 제거
 st.set_page_config(
     page_title="NBA 실시간 스코어보드",
     page_icon="🏀",
@@ -20,7 +20,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. HTML / CSS / JS 코드 (선발 라인업 팝업 기능 포함)
+# 2. HTML / CSS / JS 코드 (실제 로스터 API 연동)
 html_code = """
 <!DOCTYPE html>
 <html lang="ko">
@@ -174,7 +174,6 @@ html_code = """
       justify-content: center;
       box-shadow: var(--shadow-sm);
       transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      position: relative;
     }
 
     .logo-wrapper img {
@@ -306,9 +305,7 @@ html_code = """
       font-style: italic;
     }
 
-    /* -------------------------------------------
-       월드컵 스타일 선발 라인업 팝업 모달 CSS
-    ------------------------------------------- */
+    /* 모달 CSS */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -399,7 +396,6 @@ html_code = """
       color: var(--accent-orange);
       margin-top: 2px;
       letter-spacing: 1px;
-      text-transform: uppercase;
     }
 
     .lineup-grid {
@@ -452,8 +448,9 @@ html_code = """
     }
 
     .lineup-detail {
-      font-size: 0.8rem;
-      color: var(--text-muted);
+      font-size: 0.85rem;
+      color: var(--accent-orange);
+      font-weight: 700;
       margin-top: 2px;
     }
 
@@ -473,7 +470,7 @@ html_code = """
   <div class="container">
     <header>
       <h1>🏀 NBA 실시간 스코어</h1>
-      <p>ESPN 라이브 연동 · 팀 로고를 클릭해 선발 라인업을 확인하세요</p>
+      <p>ESPN 라이브 연동 · 팀 로고를 클릭해 출전 선수를 확인하세요</p>
     </header>
 
     <div class="controls">
@@ -484,14 +481,13 @@ html_code = """
     <div id="gamesContainer" class="games-list"></div>
   </div>
 
-  <!-- 선발 라인업 모달 팝업 -->
   <div id="lineupModal" class="modal-overlay" onclick="closeModalOnBg(event)">
     <div class="modal-content">
       <button class="close-btn" onclick="closeModal()">✕</button>
       <div class="modal-header">
         <img id="modalLogo" class="modal-team-logo" src="" alt="Team Logo">
         <div id="modalTeamName" class="modal-title">Team Name</div>
-        <div class="modal-subtitle">⚽ STARTING 5 LINEUP</div>
+        <div class="modal-subtitle">🏀 TEAM ROSTER & LINEUP</div>
       </div>
       <div id="modalLineupList" class="lineup-grid"></div>
     </div>
@@ -577,7 +573,7 @@ html_code = """
                 <div class="logo-wrapper">
                   <img src="${away.team.logo}" alt="${away.team.displayName}">
                 </div>
-                <div class="click-hint">🔍 라인업 보기</div>
+                <div class="click-hint">🔍 로스터 보기</div>
                 <div class="team-name">${away.team.shortDisplayName}</div>
                 <div class="score">${away.score || 0}</div>
                 <div class="team-type">AWAY</div>
@@ -594,7 +590,7 @@ html_code = """
                 <div class="logo-wrapper">
                   <img src="${home.team.logo}" alt="${home.team.displayName}">
                 </div>
-                <div class="click-hint">🔍 라인업 보기</div>
+                <div class="click-hint">🔍 로스터 보기</div>
                 <div class="team-name">${home.team.shortDisplayName}</div>
                 <div class="score">${home.score || 0}</div>
                 <div class="team-type">HOME</div>
@@ -629,9 +625,9 @@ html_code = """
     }
 
     /* -------------------------------------------
-       월드컵 스타일 선발 라인업 모달 JS 로직
+       실제 ESPN Summary API 로스터 수집 JS
     ------------------------------------------- */
-    function openLineupModal(gameIdx, teamType) {
+    async function openLineupModal(gameIdx, teamType) {
       const event = globalGamesData[gameIdx];
       if (!event) return;
 
@@ -642,41 +638,70 @@ html_code = """
       document.getElementById('modalTeamName').textContent = comp.team.displayName;
 
       const lineupContainer = document.getElementById('modalLineupList');
-      
-      // ESPN API 데이터로부터 라인업 파싱
-      let players = [];
-      const defaultPositions = ['PG', 'SG', 'SF', 'PF', 'C'];
-
-      if (comp.roster && comp.roster.length > 0) {
-        players = comp.roster.slice(0, 5).map((p, idx) => ({
-          name: p.athlete.displayName,
-          pos: p.athlete.position ? p.athlete.position.abbreviation : defaultPositions[idx],
-          headshot: p.athlete.headshot || 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png',
-          jersey: p.athlete.jersey ? `#${p.athlete.jersey}` : ''
-        }));
-      } else {
-        // 기본 에이스 카드 5명 자동 세팅
-        players = [
-          { name: `${comp.team.shortDisplayName} 메인 리드 가드`, pos: 'PG', jersey: '#1', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png' },
-          { name: `${comp.team.shortDisplayName} 슛팅 가드`, pos: 'SG', jersey: '#2', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png' },
-          { name: `${comp.team.shortDisplayName} 스몰 포워드`, pos: 'SF', jersey: '#3', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png' },
-          { name: `${comp.team.shortDisplayName} 파워 포워드`, pos: 'PF', jersey: '#4', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png' },
-          { name: `${comp.team.shortDisplayName} 센터 포스트`, pos: 'C', jersey: '#5', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png' }
-        ];
-      }
-
-      lineupContainer.innerHTML = players.map((p, i) => `
-        <div class="lineup-card" style="animation-delay: ${i * 0.08}s">
-          <div class="lineup-pos">${p.pos}</div>
-          <img src="${p.headshot}" class="lineup-headshot" onerror="this.src='https://a.espncdn.com/i/headshots/nba/players/full/fallback.png'">
-          <div class="lineup-info">
-            <div class="lineup-name">${p.name} ${p.jersey}</div>
-            <div class="lineup-detail">NBA Active Roster · Starting Lineup</div>
-          </div>
-        </div>
-      `).join('');
-
+      lineupContainer.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);">🔄 실제 선수 로스터를 불러오는 중...</div>`;
       document.getElementById('lineupModal').classList.add('active');
+
+      try {
+        // ESPN 경기 상세 Summary API 호출 (실제 선수 명단 포함)
+        const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${event.id}`);
+        const summaryData = await summaryRes.json();
+        
+        let playerList = [];
+        const defaultPositions = ['PG', 'SG', 'SF', 'PF', 'C'];
+
+        if (summaryData.boxscore && summaryData.boxscore.players) {
+          const teamBox = summaryData.boxscore.players.find(p => p.team.id === comp.team.id);
+          if (teamBox && teamBox.statistics && teamBox.statistics[0]) {
+            const athletes = teamBox.statistics[0].athletes || [];
+            playerList = athletes.slice(0, 5).map((item, idx) => {
+              const ath = item.athlete;
+              const stats = item.stats || [];
+              const pts = stats[0] || '0'; // 득점 수치
+              return {
+                name: ath.displayName,
+                pos: ath.position ? ath.position.abbreviation : defaultPositions[idx],
+                headshot: ath.headshot ? ath.headshot.href : 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png',
+                jersey: ath.jersey ? `#${ath.jersey}` : '',
+                ptsText: pts !== '0' ? `${pts} PTS` : 'Active Roster'
+              };
+            });
+          }
+        }
+
+        // 만약 경기 전이라서 Boxscore 로스터가 없는 경우 Leader 데이터 활용
+        if (playerList.length === 0 && comp.leaders) {
+          comp.leaders.forEach((leaderGroup, idx) => {
+            if (leaderGroup.leaders && leaderGroup.leaders[0]) {
+              const l = leaderGroup.leaders[0];
+              playerList.push({
+                name: l.athlete.displayName,
+                pos: defaultPositions[idx % 5],
+                headshot: l.athlete.headshot || 'https://a.espncdn.com/i/headshots/nba/players/full/fallback.png',
+                jersey: l.athlete.jersey ? `#${l.athlete.jersey}` : '',
+                ptsText: `${l.value || 0} ${l.displayName || 'STAT'}`
+              });
+            }
+          });
+        }
+
+        if (playerList.length > 0) {
+          lineupContainer.innerHTML = playerList.map((p, i) => `
+            <div class="lineup-card" style="animation-delay: ${i * 0.08}s">
+              <div class="lineup-pos">${p.pos}</div>
+              <img src="${p.headshot}" class="lineup-headshot" onerror="this.src='https://a.espncdn.com/i/headshots/nba/players/full/fallback.png'">
+              <div class="lineup-info">
+                <div class="lineup-name">${p.name} ${p.jersey}</div>
+                <div class="lineup-detail">${p.ptsText}</div>
+              </div>
+            </div>
+          `).join('');
+        } else {
+          lineupContainer.innerHTML = `<div style="text-align:center; padding: 20px;">경기 전이거나 선수 상세 정보를 준비 중입니다.</div>`;
+        }
+
+      } catch (err) {
+        lineupContainer.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--accent-orange);">선수 명단을 불러오는 중 오류가 발생했습니다.</div>`;
+      }
     }
 
     function closeModal() {
